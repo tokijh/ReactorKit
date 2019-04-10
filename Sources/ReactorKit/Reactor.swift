@@ -67,6 +67,13 @@ private var currentStateKey = "currentState"
 private var stateKey = "state"
 private var disposeBagKey = "disposeBag"
 private var stubKey = "stub"
+private var injectorKey = "injector"
+private var actionInjectorBeforeTransformKey = "actionInjectorBeforeTransform"
+private var actionInjectorAfterTransformKey = "actionInjectorAfterTransform"
+private var mutationInjectorBeforeTransformKey = "mutationInjectorBeforeTransform"
+private var mutationInjectorAfterTransformKey = "mutationInjectorAfterTransform"
+private var stateInjectorBeforeTransformKey = "stateInjectorBeforeTransform"
+private var stateInjectorAfterTransformKey = "stateInjectorAfterTransform"
 
 
 // MARK: - Default Implementations
@@ -112,14 +119,18 @@ extension Reactor {
 
   public func createStateStream() -> Observable<State> {
     let action = self._action.asObservable()
-    let transformedAction = self.transform(action: action)
-    let mutation = transformedAction
+    let injectedActionBeforeTransform = Observable.merge(action, actionInjectorBeforeTransform.asObservable())
+    let transformedAction = self.transform(action: injectedActionBeforeTransform)
+    let injectedActionAfterTransformed = Observable.merge(transformedAction, actionInjectorAfterTransform.asObservable())
+    let mutation = injectedActionAfterTransformed
       .flatMap { [weak self] action -> Observable<Mutation> in
         guard let `self` = self else { return .empty() }
         return self.mutate(action: action).catchError { _ in .empty() }
       }
-    let transformedMutation = self.transform(mutation: mutation)
-    let state = transformedMutation
+    let injectedMutationBeforeTransform = Observable.merge(mutation, mutationInjectorBeforeTransform.asObservable())
+    let transformedMutation = self.transform(mutation: injectedMutationBeforeTransform)
+    let injectedMutationAfterTransfor = Observable.merge(transformedMutation, mutationInjectorAfterTransform.asObservable())
+    let state = injectedMutationAfterTransfor
       .scan(self.initialState) { [weak self] state, mutation -> State in
         guard let `self` = self else { return state }
         return self.reduce(state: state, mutation: mutation)
@@ -127,13 +138,15 @@ extension Reactor {
       .catchError { _ in .empty() }
       .startWith(self.initialState)
       .observeOn(MainScheduler.instance)
-    let transformedState = self.transform(state: state)
+    let injectedStateBeforeTransform = Observable.merge(state, stateInjectorBeforeTransform.asObservable())
+    let transformedState = self.transform(state: injectedStateBeforeTransform)
+    let injectedMutationAfterTransform = Observable.merge(transformedState, stateInjectorAfterTransform.asObservable())
       .do(onNext: { [weak self] state in
         self?.currentState = state
       })
       .replay(1)
-    transformedState.connect().disposed(by: self.disposeBag)
-    return transformedState
+    injectedMutationAfterTransform.connect().disposed(by: self.disposeBag)
+    return injectedMutationAfterTransform
   }
 
   public func transform(action: Observable<Action>) -> Observable<Action> {
@@ -172,5 +185,38 @@ extension Reactor {
       forKey: &stubKey,
       default: .init(reactor: self, disposeBag: self.disposeBag)
     )
+  }
+}
+
+
+// MARK: - Injector
+
+extension Reactor {
+  public var injector: Injector<Self> {
+    return self.associatedObject(
+      forKey: &injectorKey,
+      default: .init(reactor: self)
+    )
+  }
+
+  internal var actionInjectorBeforeTransform: ActionSubject<Action> {
+    return self.associatedObject(forKey: &actionInjectorBeforeTransformKey, default: .init())
+  }
+  internal var actionInjectorAfterTransform: ActionSubject<Action> {
+    return self.associatedObject(forKey: &actionInjectorAfterTransformKey, default: .init())
+  }
+
+  internal var mutationInjectorBeforeTransform: ActionSubject<Mutation> {
+    return self.associatedObject(forKey: &mutationInjectorBeforeTransformKey, default: .init())
+  }
+  internal var mutationInjectorAfterTransform: ActionSubject<Mutation> {
+    return self.associatedObject(forKey: &mutationInjectorAfterTransformKey, default: .init())
+  }
+
+  internal var stateInjectorBeforeTransform: ActionSubject<State> {
+    return self.associatedObject(forKey: &stateInjectorBeforeTransformKey, default: .init())
+  }
+  internal var stateInjectorAfterTransform: ActionSubject<State> {
+    return self.associatedObject(forKey: &stateInjectorAfterTransformKey, default: .init())
   }
 }
