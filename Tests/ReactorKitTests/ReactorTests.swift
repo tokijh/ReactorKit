@@ -192,6 +192,84 @@ final class ReactorTests: XCTestCase {
     XCTAssertEqual(reactor.currentState, [])
   }
 
+  func testInjector_actionBeforeTransform() {
+    let test = RxExpect()
+    let reactor = test.retain(TestReactor())
+    test.input(reactor.injector.actionBeforeTransform, [
+      .next(100, ["injectedAction"]),
+      ])
+    test.assert(reactor.state) { events in
+      XCTAssertEqual(events.elements.count, 2)
+      XCTAssertEqual(events.elements[0], ["transformedState"]) // initial state
+      XCTAssertEqual(events.elements[1], ["injectedAction", "transformedAction", "mutation", "transformedMutation", "transformedState"])
+    }
+  }
+
+  func testInjector_actionAfterTransform() {
+    let test = RxExpect()
+    let reactor = test.retain(TestReactor())
+    test.input(reactor.injector.actionAfterTransform, [
+      .next(100, ["injectedAction"]),
+      ])
+    test.assert(reactor.state) { events in
+      XCTAssertEqual(events.elements.count, 2)
+      XCTAssertEqual(events.elements[0], ["transformedState"]) // initial state
+      XCTAssertEqual(events.elements[1], ["injectedAction", "mutation", "transformedMutation", "transformedState"])
+    }
+  }
+
+  func testInjector_mutationBeforeTransform() {
+    let test = RxExpect()
+    let reactor = test.retain(TestReactor())
+    test.input(reactor.injector.mutationBeforeTransform, [
+      .next(100, ["injectedMutation"]),
+      ])
+    test.assert(reactor.state) { events in
+      XCTAssertEqual(events.elements.count, 2)
+      XCTAssertEqual(events.elements[0], ["transformedState"]) // initial state
+      XCTAssertEqual(events.elements[1], ["injectedMutation", "transformedMutation", "transformedState"])
+    }
+  }
+
+  func testInjector_mutationAfterTransform() {
+    let test = RxExpect()
+    let reactor = test.retain(TestReactor())
+    test.input(reactor.injector.mutationAfterTransform, [
+      .next(100, ["injectedMutation"]),
+      ])
+    test.assert(reactor.state) { events in
+      XCTAssertEqual(events.elements.count, 2)
+      XCTAssertEqual(events.elements[0], ["transformedState"]) // initial state
+      XCTAssertEqual(events.elements[1], ["injectedMutation", "transformedState"])
+    }
+  }
+
+  func testInjector_stateBeforeTransform() {
+    let test = RxExpect()
+    let reactor = test.retain(TestReactor())
+    test.input(reactor.injector.stateBeforeTransform, [
+      .next(100, ["injectedState"]),
+      ])
+    test.assert(reactor.state) { events in
+      XCTAssertEqual(events.elements.count, 2)
+      XCTAssertEqual(events.elements[0], ["transformedState"]) // initial state
+      XCTAssertEqual(events.elements[1], ["injectedState", "transformedState"])
+    }
+  }
+
+  func testInjector_stateAfterTransform() {
+    let test = RxExpect()
+    let reactor = test.retain(TestReactor())
+    test.input(reactor.injector.stateAfterTransform, [
+      .next(100, ["injectedState"]),
+      ])
+    test.assert(reactor.state) { events in
+      XCTAssertEqual(events.elements.count, 2)
+      XCTAssertEqual(events.elements[0], ["transformedState"]) // initial state
+      XCTAssertEqual(events.elements[1], ["injectedState"])
+    }
+  }
+
   /// A test for #30
   func testGenericSubclassing() {
     class ParentReactor<T>: Reactor {
