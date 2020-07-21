@@ -13,7 +13,7 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/ReactiveX/RxSwift.git", .upToNextMajor(from: "5.0.0")),
-    .package(url: "https://github.com/tokijh/WeakMapTable.git", .branch("master")),
+    .package(url: "https://github.com/tokijh/WeakMapTable.git", .branch("define-platform-versions")),
     .package(url: "https://github.com/devxoul/RxExpect.git", .upToNextMajor(from: "2.0.0"))
   ],
   targets: [
